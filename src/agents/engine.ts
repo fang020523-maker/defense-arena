@@ -138,16 +138,26 @@ async function streamToMessage(args: StreamArgs): Promise<ArenaMessage> {
       },
     })
 
-  // 网络类错误自动重试一次（Key 类错误不重试）
   let raw: string
+  // 每次尝试前重置累计器，避免部分流式内容在重试后重复拼接
+  const attempt = async (): Promise<string> => {
+    acc = ''
+    thinking = ''
+    spoke = false
+    lastFlush = 0
+    useDefense.getState().updateMessage(id, { content: '' })
+    return doStream()
+  }
+
+  // 网络类错误自动重试一次（Key 类错误不重试）
   try {
-    raw = await doStream()
+    raw = await attempt()
   } catch (err) {
     if ((err as Error).name === 'AbortError') throw err
     const msgText = err instanceof ChatApiError ? err.message : '网络异常'
     if (/API Key/.test(msgText)) throw err
     await sleep(1500)
-    raw = await doStream()
+    raw = await attempt()
   }
 
   let content = raw.trim()

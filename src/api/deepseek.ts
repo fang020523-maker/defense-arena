@@ -28,13 +28,19 @@ export interface StreamOptions {
 
 export class ChatApiError extends Error {}
 
-/** 快速连通用：单条 ping 请求 */
+/** 快速连通用：单条 ping 请求（200 SSE 即视为 Key 有效） */
 export async function pingApiKey(apiKey: string): Promise<void> {
-  await streamChat({
-    apiKey,
-    messages: [{ role: 'user', content: 'ping' }],
-    maxTokens: 4,
-  })
+  try {
+    await streamChat({
+      apiKey,
+      messages: [{ role: 'user', content: 'ping' }],
+      maxTokens: 16,
+    })
+  } catch (err) {
+    // 已收到 200 SSE 流（只是截断没产出内容）说明鉴权通过，视为连接成功
+    if (err instanceof ChatApiError && err.message.includes('未返回内容')) return
+    throw err
+  }
 }
 
 export async function streamChat(opts: StreamOptions): Promise<string> {
@@ -51,7 +57,8 @@ export async function streamChat(opts: StreamOptions): Promise<string> {
         messages,
         ...(temperature != null ? { temperature } : {}),
         ...(maxTokens != null ? { max_tokens: maxTokens } : {}),
-        ...(jsonMode ? { response_format: { type: 'json_object' } } : {}),
+        // JSON 输出模式仅 deepseek-chat 支持（reasoner 会 400），reasoner 靠 extractJson 兜底
+        ...(jsonMode && model === 'deepseek-chat' ? { response_format: { type: 'json_object' } } : {}),
       }),
       signal,
     })
