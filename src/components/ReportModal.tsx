@@ -26,7 +26,20 @@ function buildExportMarkdown(): string {
     })
     .join('\n')
   const total = radar ? Math.round(SCORE_DIMS.reduce((s, { key }) => s + radar[key], 0) / SCORE_DIMS.length) : '-'
-  return `# 答辩终评报告\n\n- **论文**：${corpus.title}\n- **类型**：${config.defenseType === 'proposal' ? '开题答辩' : config.defenseType === 'midterm' ? '中期答辩' : '毕业答辩'}\n- **综合得分**：${total} / 100\n\n## 委员会五维评分\n\n| 维度 | 平均分 |\n| --- | --- |\n${dims}\n\n## 各评委意见\n\n${judges}\n## 主席终评\n\n${verdict}\n\n---\n*本报告由 赛博答辩厅 Defense Arena 生成 · ${new Date().toLocaleString('zh-CN')}*\n`
+  // 答辩实录（问题/回答/开场）
+  const transcript = useDefense
+    .getState()
+    .messages.filter((m) => m.kind === 'question' || m.kind === 'answer' || m.kind === 'opening')
+    .map((m) =>
+      m.kind === 'question'
+        ? `**${getAgent(m.agentId).name}（质询${m.followUp ? '·追问' : ''}）**：${m.content}`
+        : m.kind === 'answer'
+          ? `**答辩人**：${m.content}`
+          : `**答辩人（开场陈述）**：${m.content}`,
+    )
+    .map((s) => s.replace(/\n+/g, '\n'))
+    .join('\n\n')
+  return `# 答辩终评报告\n\n- **论文**：${corpus.title}\n- **类型**：${config.defenseType === 'proposal' ? '开题答辩' : config.defenseType === 'midterm' ? '中期答辩' : '毕业答辩'}\n- **综合得分**：${total} / 100\n\n## 委员会五维评分\n\n| 维度 | 平均分 |\n| --- | --- |\n${dims}\n\n## 各评委意见\n\n${judges}\n## 主席终评\n\n${verdict}\n\n## 附：答辩实录\n\n${transcript}\n\n---\n*本报告由 赛博答辩厅 Defense Arena 生成 · ${new Date().toLocaleString('zh-CN')}*\n`
 }
 
 export function ReportModal({ open, onClose }: { open: boolean; onClose: () => void }) {
