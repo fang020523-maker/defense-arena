@@ -3,15 +3,21 @@
  */
 import { AnimatePresence, motion } from 'framer-motion'
 import { FileText, RotateCcw, Settings, Square, StopCircle } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { runScoringOnly, stopArena } from './agents/engine'
-import { ArenaCanvas } from './components/ArenaCanvas'
 import { MessageFeed } from './components/MessageFeed'
-import { ReportModal } from './components/ReportModal'
 import { SettingsModal } from './components/SettingsModal'
 import { SetupWizard } from './components/SetupWizard'
 import { useDefense } from './store/useDefense'
 import type { Phase } from './types'
+
+// 重型组件按需加载：React Flow（画布）与 react-markdown+ECharts（报告）
+const ArenaCanvas = lazy(() =>
+  import('./components/ArenaCanvas').then((m) => ({ default: m.ArenaCanvas })),
+)
+const ReportModal = lazy(() =>
+  import('./components/ReportModal').then((m) => ({ default: m.ReportModal })),
+)
 
 const STEPS: { key: Phase | 'setup'; label: string }[] = [
   { key: 'setup', label: '备战' },
@@ -100,11 +106,21 @@ export default function App() {
   const error = useDefense((s) => s.error)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [reportOpen, setReportOpen] = useState(false)
+  /** 报告弹窗首开后保持挂载，保留退出动画 */
+  const [reportLoaded, setReportLoaded] = useState(false)
 
   // 终评完成后自动弹出报告
   useEffect(() => {
-    if (phase === 'done') setReportOpen(true)
+    if (phase === 'done') {
+      setReportLoaded(true)
+      setReportOpen(true)
+    }
   }, [phase])
+
+  const openReport = () => {
+    setReportLoaded(true)
+    setReportOpen(true)
+  }
 
   const inArena = phase !== 'setup'
 
@@ -130,10 +146,16 @@ export default function App() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="flex h-full"
+              className="flex h-full flex-col lg:flex-row"
             >
-              <div className="relative min-w-0 flex-1">
-                <ArenaCanvas />
+              <div className="relative h-[42%] min-h-0 shrink-0 lg:h-auto lg:min-w-0 lg:flex-1 lg:shrink">
+                <Suspense
+                  fallback={
+                    <div className="flex h-full items-center justify-center text-xs text-mist">沙盘加载中…</div>
+                  }
+                >
+                  <ArenaCanvas />
+                </Suspense>
                 {/* 进度条幅 */}
                 {progressLabel && (
                   <div className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2">
@@ -146,13 +168,13 @@ export default function App() {
                 {phase === 'done' && (
                   <button
                     className="btn-primary absolute bottom-8 left-1/2 -translate-x-1/2 !px-6"
-                    onClick={() => setReportOpen(true)}
+                    onClick={openReport}
                   >
                     <FileText size={15} /> 查看答辩终评报告
                   </button>
                 )}
               </div>
-              <div className="w-[380px] shrink-0">
+              <div className="min-h-0 flex-1 border-t border-line/60 lg:w-[380px] lg:shrink-0 lg:border-t-0 lg:border-l">
                 <MessageFeed />
               </div>
             </motion.div>
@@ -165,7 +187,11 @@ export default function App() {
       </main>
 
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
-      <ReportModal open={reportOpen} onClose={() => setReportOpen(false)} />
+      {reportLoaded && (
+        <Suspense fallback={null}>
+          <ReportModal open={reportOpen} onClose={() => setReportOpen(false)} />
+        </Suspense>
+      )}
     </div>
   )
 }
