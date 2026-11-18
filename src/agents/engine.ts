@@ -446,6 +446,7 @@ export async function runArena(): Promise<void> {
 
   controller = new AbortController()
   useDefense.getState().patch({
+    phase: 'opening',
     running: true,
     error: null,
     messages: [],
@@ -453,6 +454,7 @@ export async function runArena(): Promise<void> {
     radar: null,
     verdict: '',
     progressLabel: '',
+    activeEdge: null,
   })
 
   try {
