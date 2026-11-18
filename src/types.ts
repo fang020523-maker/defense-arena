@@ -76,6 +76,10 @@ export interface ArenaMessage {
   /** 是否追问（压力模式末轮） */
   followUp?: boolean
   content: string
+  /** 评委问题的切入点（问题首行「关注点：」解析而来） */
+  focus?: string
+  /** 思维链摘录（deepseek-reasoner） */
+  thinking?: string
   /** 引用命中的论文片段编号 */
   citations?: number[]
   /** 流式输出中 */

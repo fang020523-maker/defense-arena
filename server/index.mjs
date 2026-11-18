@@ -56,7 +56,7 @@ app.post('/api/chat', async (req, res) => {
     })
   }
 
-  const { model, messages, temperature, max_tokens, top_p } = req.body || {}
+  const { model, messages, temperature, max_tokens, top_p, response_format } = req.body || {}
   if (!Array.isArray(messages) || messages.length === 0) {
     return res.status(400).json({ error: { message: '参数错误：messages 不能为空' } })
   }
@@ -69,6 +69,10 @@ app.post('/api/chat', async (req, res) => {
     ...(typeof temperature === 'number' ? { temperature: Math.min(Math.max(temperature, 0), 2) } : {}),
     ...(typeof max_tokens === 'number' ? { max_tokens: Math.min(Math.max(max_tokens, 1), 8192) } : {}),
     ...(typeof top_p === 'number' ? { top_p } : {}),
+    // JSON 输出模式（评分结构化解析用）
+    ...(response_format && response_format.type === 'json_object'
+      ? { response_format: { type: 'json_object' } }
+      : {}),
   }
 
   const controller = new AbortController()
