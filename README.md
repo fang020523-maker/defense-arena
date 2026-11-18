@@ -46,7 +46,7 @@
 ### 第 1 步：克隆并安装（约 2 分钟）
 
 ```bash
-git clone <你的仓库地址>
+git clone https://github.com/fang020523-maker/defense-arena.git
 cd defense-arena
 npm install
 ```
