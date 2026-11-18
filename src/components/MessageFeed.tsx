@@ -30,6 +30,7 @@ const KIND_LABEL: Record<MessageKind, string> = {
 function MessageCard({ msg }: { msg: ArenaMessage }) {
   const agent = getAgent(msg.agentId)
   const accent = ACCENT[agent.accent]
+  const corpus = useDefense((s) => s.corpus)
   const Icon = KIND_ICON[msg.kind]
 
   if (msg.kind === 'system') {
@@ -107,14 +108,32 @@ function MessageCard({ msg }: { msg: ArenaMessage }) {
       <p className="mt-2 whitespace-pre-wrap text-[13px] leading-relaxed text-frost/95">
         {msg.content}
         {msg.streaming && <span className="animate-blink text-neon-cyan">▍</span>}
-        {msg.streaming && !msg.content && <span className="text-mist">思考中…</span>}
+        {msg.streaming && !msg.content && (
+          <span className="text-mist">{msg.thinking ? '💭 深度思考中…' : '思考中…'}</span>
+        )}
       </p>
 
-      {/* 引用片段 */}
+      {/* 思维链（deepseek-reasoner） */}
+      {msg.thinking && (
+        <details className="mt-1.5 group">
+          <summary className="cursor-pointer list-none text-[10px] text-mist/50 transition-colors hover:text-neon-violet">
+            💭 深度思考过程（{msg.thinking.length} 字）
+          </summary>
+          <p className="mt-1 max-h-36 overflow-y-auto whitespace-pre-wrap rounded-md bg-ink/60 p-2 text-[11px] leading-relaxed text-mist/70">
+            {msg.thinking}
+          </p>
+        </details>
+      )}
+
+      {/* 引用片段（悬停可预览原文） */}
       {msg.citations && msg.citations.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1">
           {msg.citations.map((id) => (
-            <span key={id} className="chip !py-0 font-mono text-[10px] !text-mist/80">
+            <span
+              key={id}
+              className="chip !py-0 font-mono text-[10px] !text-mist/80"
+              title={corpus?.chunks[id]?.text.slice(0, 140) ?? '片段内容不可用'}
+            >
               <FileText size={9} /> 片段{id}
             </span>
           ))}
@@ -142,7 +161,7 @@ export function MessageFeed() {
   }, [messages])
 
   return (
-    <div className="flex h-full flex-col border-l border-line/60 bg-ink/30">
+    <div className="flex h-full flex-col bg-ink/30">
       <div className="flex items-center gap-2 border-b border-line/60 px-4 py-3">
         <span className="text-sm font-semibold text-frost">答辩实录</span>
         <span className="chip !py-0 font-mono text-[10px]">{messages.length} 条</span>

@@ -16,8 +16,9 @@ import { pingApiKey } from '../api/deepseek'
 import { runArena } from '../agents/engine'
 import { BM25Index } from '../rag/bm25'
 import { buildChunks } from '../rag/chunker'
+import { clearHistory, loadHistory } from '../store/useDefense'
 import { useDefense } from '../store/useDefense'
-import type { Corpus, DefenseType } from '../types'
+import { DEFENSE_TYPE_LABEL, type Corpus, type DefenseType } from '../types'
 import { Segmented, Toggle } from './ui'
 
 const FIELDS = ['计算机', '软件工程', '电子信息', '机械工程', '材料科学', '生物医学', '经济管理', '人文社科', '物理学', '化学']
@@ -38,6 +39,7 @@ export function SetupWizard() {
   const [keyOk, setKeyOk] = useState<boolean | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const [dragOver, setDragOver] = useState(false)
+  const [history, setHistory] = useState(() => loadHistory())
 
   const handleFile = async (file: File) => {
     setError(null)
@@ -318,6 +320,42 @@ export function SetupWizard() {
           </div>
         </div>
       </div>
+
+      {/* 历史答辩记录 */}
+      {history.length > 0 && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="panel mt-5 p-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-bold text-mist">📚 历史答辩记录（本机）</h3>
+            <button
+              className="text-[10px] text-mist/50 transition-colors hover:text-neon-rose"
+              onClick={() => {
+                clearHistory()
+                setHistory([])
+              }}
+            >
+              清空
+            </button>
+          </div>
+          <div className="mt-2 space-y-1.5">
+            {history.slice(0, 5).map((h) => (
+              <div key={h.id} className="flex items-center gap-2.5 rounded-lg bg-ink/50 px-3 py-2 text-xs">
+                <span
+                  className={`font-mono text-sm font-bold ${
+                    h.totalScore >= 80 ? 'text-neon-emerald' : h.totalScore >= 60 ? 'text-neon-amber' : 'text-neon-rose'
+                  }`}
+                >
+                  {h.totalScore}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-frost">{h.thesisTitle}</span>
+                <span className="shrink-0 text-mist/70">{DEFENSE_TYPE_LABEL[h.defenseType]}</span>
+                <span className="shrink-0 font-mono text-[10px] text-mist/50">
+                  {new Date(h.time).toLocaleDateString('zh-CN')}
+                </span>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
 
       {/* 错误提示 */}
       {error && (

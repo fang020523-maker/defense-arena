@@ -130,7 +130,10 @@ async function streamToMessage(args: StreamArgs): Promise<ArenaMessage> {
         const now = Date.now()
         if (now - lastFlush > 90) {
           lastFlush = now
-          useDefense.getState().updateMessage(id, { content: acc })
+          useDefense.getState().updateMessage(id, {
+            content: acc,
+            ...(thinking ? { thinking } : {}),
+          })
         }
       },
       onReasoning: (t) => {
@@ -376,27 +379,42 @@ async function runScoring(): Promise<JudgeScore[]> {
       },
     ]
 
-    const raw = await streamToMessage({
-      agentId: judge.id,
-      kind: 'score',
-      chat,
-      temperature: 0.2,
-      maxTokens: 450,
-      jsonMode: true,
-    })
-    const json = extractJson<{
-      scores?: Record<string, unknown>
-      comment?: string
-      sharpest?: string
-      weakest?: string
-    }>(raw.content)
-    results.push({
-      judgeId: judge.id,
-      scores: validateScores((json.scores ?? {}) as Record<string, unknown>),
-      comment: (json.comment ?? '').slice(0, 80),
-      sharpest: (json.sharpest ?? '').slice(0, 160),
-      weakest: (json.weakest ?? '').slice(0, 80),
-    })
+    // 解析失败自动重试一次（如 reasoner 输出带杂质），失败的消息卡片从流中清除
+    let parsed: JudgeScore | null = null
+    let lastMsgId = ''
+    for (let attempt = 0; attempt < 2 && !parsed; attempt++) {
+      const raw = await streamToMessage({
+        agentId: judge.id,
+        kind: 'score',
+        chat,
+        temperature: 0.2,
+        maxTokens: 450,
+        jsonMode: true,
+      })
+      lastMsgId = raw.id
+      try {
+        const json = extractJson<{
+          scores?: Record<string, unknown>
+          comment?: string
+          sharpest?: string
+          weakest?: string
+        }>(raw.content)
+        parsed = {
+          judgeId: judge.id,
+          scores: validateScores((json.scores ?? {}) as Record<string, unknown>),
+          comment: (json.comment ?? '').slice(0, 80),
+          sharpest: (json.sharpest ?? '').slice(0, 160),
+          weakest: (json.weakest ?? '').slice(0, 80),
+        }
+      } catch (err) {
+        if (attempt === 1) {
+          useDefense.getState().removeMessage(lastMsgId)
+          throw err
+        }
+        useDefense.getState().removeMessage(lastMsgId)
+      }
+    }
+    if (parsed) results.push(parsed)
     await sleep(300)
   }
 

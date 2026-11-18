@@ -58,6 +58,7 @@ interface DefenseState {
   patch: (partial: Partial<DefenseState>) => void
   addMessage: (msg: ArenaMessage) => void
   updateMessage: (id: string, patch: Partial<ArenaMessage>) => void
+  removeMessage: (id: string) => void
   setAgentStatus: (id: AgentId, status: AgentStatus) => void
   /** 全部重置回 setup（保留设置与历史） */
   resetArena: () => void
@@ -72,6 +73,10 @@ export function loadHistory(): SessionSummary[] {
   } catch {
     return []
   }
+}
+
+export function clearHistory(): void {
+  localStorage.removeItem(HISTORY_KEY)
 }
 
 const initialRuntime = {
@@ -121,6 +126,8 @@ export const useDefense = create<DefenseState>()(
           // 控制 transcript 规模：仅保留最近 200 条
           return { messages: messages.length > 200 ? messages.slice(-200) : messages }
         }),
+      removeMessage: (id) =>
+        set((s) => ({ messages: s.messages.filter((m) => m.id !== id) })),
       updateMessage: (id, patch) =>
         set((s) => ({
           messages: s.messages.map((m) => (m.id === id ? { ...m, ...patch } : m)),
