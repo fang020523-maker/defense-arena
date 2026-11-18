@@ -4,8 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently -k -n server,web -c yellow,cyan \"node server/index.mjs\" \"vite\"",
     "build": "tsc -b && vite build",
+    "start": "node server/index.mjs",
     "lint": "oxlint",
     "preview": "vite preview"
   },
