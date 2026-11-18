@@ -18,7 +18,9 @@ import { fileURLToPath } from 'node:url'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const PORT = Number(process.env.PORT || 3001)
-const UPSTREAM = 'https://api.deepseek.com/chat/completions'
+/** 上游地址：默认官方，支持自定义中转/网关（需以 http(s):// 开头，结尾不带 /v1） */
+const BASE_URL = (process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com').replace(/\/+$/, '')
+const UPSTREAM = `${BASE_URL}/chat/completions`
 /** 允许调用的模型白名单 */
 const MODELS = new Set(['deepseek-chat', 'deepseek-reasoner'])
 /** 单次请求超时（毫秒）：答辩长回答 + reasoner 思维链，放宽到 3 分钟 */
@@ -160,6 +162,7 @@ app.listen(PORT, () => {
   console.log('')
   console.log('  ⚔️  赛博答辩厅 Defense Arena 代理服务已启动')
   console.log(`     API  地址: http://localhost:${PORT}/api`)
+  console.log(`     上游服务: ${BASE_URL}`)
   console.log(`     前端访问: http://localhost:5173 (npm run dev)`)
   if (existsSync(distDir)) console.log(`     托管构建: ${distDir} (npm run build 后单进程可运行)`)
   if (!process.env.DEEPSEEK_API_KEY) console.log('     提示: 未设置 DEEPSEEK_API_KEY，请在网页「设置」中填入自己的 Key')
