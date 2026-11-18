@@ -20,6 +20,15 @@ dist-ssr
 # 大体积英文测试论文（validate-rag 遇缺自动跳过；可按 scripts/validate-rag.ts 中的 arXiv 编号自行下载）
 public/test/paper-en-*.pdf
 
+# 视频工程产物：素材与成片不入库（视频按比赛要求经官网提交；制作脚本保留以示可复现）
+docs/video/*.webm
+docs/video/*.mp4
+docs/video/parts/
+docs/video/audio/
+docs/video/qc_*.png
+docs/video/concat.txt
+docs/video/subs.srt
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

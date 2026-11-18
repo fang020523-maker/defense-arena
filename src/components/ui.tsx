@@ -22,15 +22,18 @@ export function Toggle({
   onChange,
   label,
   hint,
+  testId,
 }: {
   checked: boolean
   onChange: (v: boolean) => void
   label: string
   hint?: string
+  testId?: string
 }) {
   return (
     <button
       type="button"
+      data-testid={testId}
       onClick={() => onChange(!checked)}
       className="flex w-full items-center justify-between rounded-lg border border-line bg-ink/50 px-3 py-2.5 text-left transition-colors hover:border-neon-cyan/40"
     >
@@ -58,17 +61,20 @@ export function Segmented<T extends string | number>({
   value,
   options,
   onChange,
+  testId,
 }: {
   value: T
   options: { value: T; label: string; hint?: string }[]
   onChange: (v: T) => void
+  testId?: string
 }) {
   return (
-    <div className="flex gap-1 rounded-lg border border-line bg-ink/50 p-1">
+    <div data-testid={testId} className="flex gap-1 rounded-lg border border-line bg-ink/50 p-1">
       {options.map((opt) => (
         <button
           key={String(opt.value)}
           type="button"
+          data-testid={testId ? `${testId}-${opt.value}` : undefined}
           onClick={() => onChange(opt.value)}
           className={`flex-1 rounded-md px-2 py-1.5 text-sm transition-all duration-150 ${
             value === opt.value

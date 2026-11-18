@@ -269,10 +269,12 @@ export function SetupWizard() {
                   { value: 2, label: '2 轮', hint: '标准' },
                   { value: 3, label: '3 轮', hint: '深度' },
                 ]}
+                data-testid="seg-rounds"
               />
             </div>
 
             <Toggle
+              testId="toggle-pressure"
               checked={config.pressure}
               onChange={(v) => setConfig({ pressure: v })}
               label="⚡ 压力模式"
@@ -372,6 +374,7 @@ export function SetupWizard() {
       {/* 开始按钮 */}
       <div className="mt-6 flex justify-center pb-4">
         <motion.button
+          data-testid="btn-start"
           whileHover={ready ? { scale: 1.03 } : undefined}
           whileTap={ready ? { scale: 0.97 } : undefined}
           className="btn-primary !px-10 !py-3 !text-base"

@@ -6,6 +6,7 @@ import { FileText, RotateCcw, Settings, Square, StopCircle } from 'lucide-react'
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { runScoringOnly, stopArena } from './agents/engine'
 import { MessageFeed } from './components/MessageFeed'
+import { PromptLogPage } from './components/PromptLogPage'
 import { SettingsModal } from './components/SettingsModal'
 import { SetupWizard } from './components/SetupWizard'
 import { useDefense } from './store/useDefense'
@@ -48,6 +49,9 @@ function Header({ onOpenSettings }: { onOpenSettings: () => void }) {
           <h1 className="text-sm font-black tracking-wider">
             <span className="text-gradient">赛博答辩厅</span>
             <span className="ml-2 text-[10px] font-normal text-mist/60">Defense Arena</span>
+            <span className="ml-2 rounded-full border border-neon-violet/40 bg-neon-violet/10 px-2 py-0.5 align-middle text-[9px] font-semibold text-neon-violet">
+              ⚡ Vibe Coding · AI 全程协作开发
+            </span>
           </h1>
           {corpus && <p className="max-w-[280px] truncate text-[10px] text-mist/60">{corpus.title}</p>}
         </div>
@@ -108,6 +112,14 @@ export default function App() {
   const [reportOpen, setReportOpen] = useState(false)
   /** 报告弹窗首开后保持挂载，保留退出动画 */
   const [reportLoaded, setReportLoaded] = useState(false)
+  /** 轻量 hash 路由：#/prompts 展示 AI 协同开发日志 */
+  const [route, setRoute] = useState(() => window.location.hash)
+  useEffect(() => {
+    const onHash = () => setRoute(window.location.hash)
+    window.addEventListener('hashchange', onHash)
+    return () => window.removeEventListener('hashchange', onHash)
+  }, [])
+  const showPromptLog = route === '#/prompts'
 
   // 终评完成后自动弹出报告
   useEffect(() => {
@@ -126,9 +138,15 @@ export default function App() {
 
   return (
     <div className="flex h-full flex-col">
-      <Header onOpenSettings={() => setSettingsOpen(true)} />
+      {showPromptLog ? (
+        <main className="min-h-0 flex-1">
+          <PromptLogPage />
+        </main>
+      ) : (
+        <>
+          <Header onOpenSettings={() => setSettingsOpen(true)} />
 
-      {error && (
+          {error && (
         <motion.div
           initial={{ height: 0, opacity: 0 }}
           animate={{ height: 'auto', opacity: 1 }}
@@ -193,6 +211,8 @@ export default function App() {
         <Suspense fallback={null}>
           <ReportModal open={reportOpen} onClose={() => setReportOpen(false)} />
         </Suspense>
+      )}
+        </>
       )}
     </div>
   )
