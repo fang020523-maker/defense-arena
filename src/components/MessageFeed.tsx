@@ -35,7 +35,6 @@ function MessageCard({ msg }: { msg: ArenaMessage }) {
   if (msg.kind === 'system') {
     return (
       <motion.div
-        layout
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         className="flex items-center gap-2 py-2 text-xs text-mist/80"
@@ -48,9 +47,40 @@ function MessageCard({ msg }: { msg: ArenaMessage }) {
     )
   }
 
+  // 评分消息：解析 JSON 展示友好卡片，而非原始 JSON 文本
+  if (msg.kind === 'score') {
+    let comment = '评分提交中…'
+    try {
+      const text = msg.content.replace(/```json|```/g, '').trim()
+      const start = text.indexOf('{')
+      const end = text.lastIndexOf('}')
+      const parsed = JSON.parse(text.slice(start, end + 1)) as { comment?: string }
+      if (parsed.comment) comment = parsed.comment
+    } catch {
+      if (!msg.streaming) comment = '评分已提交'
+    }
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="panel flex items-center gap-2.5 border-l-2 border-neon-amber/60 px-3.5 py-2.5"
+      >
+        <span className="flex h-6 w-6 items-center justify-center rounded-md bg-neon-amber/15 text-neon-amber">
+          <Star size={13} />
+        </span>
+        <div className="min-w-0">
+          <span className={`text-sm font-semibold ${accent.text}`}>{agent.name}</span>
+          <span className="ml-2 text-xs text-mist">{msg.streaming ? '评分中…' : '已提交五维评分'}</span>
+          {!msg.streaming && comment !== '评分已提交' && (
+            <p className="mt-0.5 truncate text-xs text-mist/80">{comment}</p>
+          )}
+        </div>
+      </motion.div>
+    )
+  }
+
   return (
     <motion.div
-      layout
       initial={{ opacity: 0, y: 14, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ type: 'spring', damping: 28, stiffness: 380 }}

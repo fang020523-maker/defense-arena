@@ -52,22 +52,37 @@ export function ArenaCanvas() {
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
 
-  /** 静态边：主席↔答辩人 + 每位评委的质询/答辩方向边 */
+  /** 静态边：主席↔答辩人 + 每位评委的质询/答辩方向边（显式指定起止句柄，保证连线走向自然） */
   const initialEdges = useMemo<Edge[]>(() => {
+    // 各评委相对答辩人的方位 → 出/入句柄
+    const HANDLE: Record<string, { q: { s?: string; t?: string }; a: { s?: string; t?: string } }> = {
+      // yan 在左侧：质询 yan右→生左；答辩 生左→yan右
+      yan: { q: { s: 'r2', t: 'l2' }, a: { s: 'l', t: 'r' } },
+      // rui 在右侧：质询 rui左→生右；答辩 生右→rui左
+      rui: { q: { s: 'l', t: 'r' }, a: { s: 'r', t: 'l' } },
+      // wen/shi 在下方：质询 顶→生底；答辩 生底→顶
+      wen: { q: {}, a: { s: 'b', t: 'b' } },
+      shi: { q: {}, a: { s: 'b', t: 'b' } },
+    }
     const edges: Edge[] = [
       {
         id: 'chair-student',
         source: 'chair',
+        sourceHandle: 'b',
         target: 'student',
+        targetHandle: 'b',
         style: { stroke: ACCENT.violet.hex, strokeWidth: 1.5, opacity: 0.3 },
       },
     ]
     for (const j of JUDGES) {
       const hex = ACCENT[j.accent].hex
+      const h = HANDLE[j.id]
       edges.push({
         id: `q-${j.id}`,
         source: j.id,
+        sourceHandle: h.q.s,
         target: 'student',
+        targetHandle: h.q.t,
         label: '质询',
         labelStyle: { fill: '#8da2c7', fontSize: 10 },
         labelBgStyle: { fill: '#0b1120' },
@@ -76,7 +91,9 @@ export function ArenaCanvas() {
       edges.push({
         id: `a-${j.id}`,
         source: 'student',
+        sourceHandle: h.a.s,
         target: j.id,
+        targetHandle: h.a.t,
         label: '答辩',
         labelStyle: { fill: '#8da2c7', fontSize: 10 },
         labelBgStyle: { fill: '#0b1120' },
