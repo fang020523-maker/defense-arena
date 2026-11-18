@@ -16,7 +16,6 @@ import { pingApiKey } from '../api/deepseek'
 import { runArena } from '../agents/engine'
 import { BM25Index } from '../rag/bm25'
 import { buildChunks } from '../rag/chunker'
-import { extractAbstract, extractPdfText, guessThesisTitle, PdfExtractError } from '../rag/pdf'
 import { useDefense } from '../store/useDefense'
 import type { Corpus, DefenseType } from '../types'
 import { Segmented, Toggle } from './ui'
@@ -44,7 +43,12 @@ export function SetupWizard() {
     setError(null)
     useDefense.setState({ corpus: null, index: null })
     setParsing({ done: 0, total: 1 })
+    // pdf.js 体积大（~1.4MB），按需加载：仅在用户真正上传时拉取
+    type PdfModule = typeof import('../rag/pdf')
+    let PdfError: PdfModule['PdfExtractError'] | null = null
     try {
+      const { extractPdfText, guessThesisTitle, extractAbstract, PdfExtractError } = await import('../rag/pdf')
+      PdfError = PdfExtractError
       const pages = await extractPdfText(file, (done, total) => setParsing({ done, total }))
       const chunks = buildChunks(pages)
       const corpus: Corpus = {
@@ -57,7 +61,9 @@ export function SetupWizard() {
       }
       setCorpus(corpus, new BM25Index(chunks))
     } catch (err) {
-      setError(err instanceof PdfExtractError ? err.message : '论文解析失败，请更换文件重试')
+      setError(
+        PdfError && err instanceof PdfError ? err.message : '论文解析失败，请更换文件重试',
+      )
     } finally {
       setParsing(null)
     }

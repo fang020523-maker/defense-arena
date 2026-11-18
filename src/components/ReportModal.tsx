@@ -5,12 +5,14 @@
 import { Check, Copy, Download, Star } from 'lucide-react'
 import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import { getAgent } from '../agents/roles'
 import { useDefense } from '../store/useDefense'
 import { SCORE_DIMS } from '../types'
 import { Modal, ACCENT } from './ui'
-import { RadarPanel } from './RadarPanel'
+
+// ECharts 体积大，报告弹窗打开时才加载
+const RadarPanel = lazy(() => import('./RadarPanel').then((m) => ({ default: m.RadarPanel })))
 
 function buildExportMarkdown(): string {
   const { corpus, config, scores, radar, verdict } = useDefense.getState()
@@ -64,7 +66,9 @@ export function ReportModal({ open, onClose }: { open: boolean; onClose: () => v
         {/* 左：雷达 + 评委意见 */}
         <div>
           <div className="panel p-3">
-            <RadarPanel height={280} />
+            <Suspense fallback={<div className="flex h-[280px] items-center justify-center text-xs text-mist">雷达图加载中…</div>}>
+              <RadarPanel height={280} />
+            </Suspense>
             <div className="-mt-1 mb-1 text-center">
               <span className="text-3xl font-black text-gradient">{total}</span>
               <span className="ml-1 text-sm text-mist">/ 100 综合得分</span>
