@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>赛博答辩厅 · Defense Arena 技术文档</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "PingFang SC", "Microsoft YaHei", "Source Han Sans SC", sans-serif;
+    color: #1a2233; line-height: 1.75; font-size: 10.5pt; margin: 0;
+  }
+  h1 { text-align: center; font-size: 20pt; margin: 8mm 0 2mm; letter-spacing: 2px; }
+  .subtitle { text-align: center; color: #5a6b8c; font-size: 10pt; margin-bottom: 8mm; }
+  h2 {
+    font-size: 14pt; margin: 9mm 0 3mm; padding-left: 9px;
+    border-left: 4px solid #0891b2; page-break-after: avoid;
+  }
+  h3 { font-size: 11.5pt; margin: 6mm 0 2mm; color: #0e7490; page-break-after: avoid; }
+  p { margin: 2mm 0; text-align: justify; }
+  table { border-collapse: collapse; width: 100%; margin: 3mm 0; font-size: 9.5pt; page-break-inside: avoid; }
+  th, td { border: 1px solid #cbd5e1; padding: 4px 8px; text-align: left; }
+  th { background: #f1f5f9; }
+  code {
+    font-family: Consolas, "Courier New", monospace; font-size: 9pt;
+    background: #f1f5f9; padding: 1px 4px; border-radius: 3px;
+  }
+  pre {
+    background: #0f172a; color: #e2e8f0; padding: 10px 14px; border-radius: 6px;
+    font-size: 8.5pt; line-height: 1.5; overflow-x: auto; page-break-inside: avoid;
+  }
+  pre code { background: none; color: inherit; padding: 0; }
+  .meta-box {
+    background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;
+    padding: 10px 16px; margin: 6mm 0; font-size: 9.5pt;
+  }
+  .quote { border-left: 3px solid #94a3b8; padding-left: 10px; color: #475569; margin: 3mm 0; }
+  .page-break { page-break-before: always; }
+  ul, ol { margin: 2mm 0; padding-left: 22px; }
+  li { margin: 1mm 0; }
+  .tag { display: inline-block; background: #ecfeff; color: #0e7490; border: 1px solid #a5f3fc; border-radius: 10px; padding: 0 8px; font-size: 8.5pt; margin-right: 4px; }
+</style>
+</head>
+<body>
+
+<h1>⚔️ 赛博答辩厅 · Defense Arena<br>技术文档</h1>
+<div class="subtitle">多智能体模拟毕业答辩沙盘 · 2026 传智杯 AI 创新应用挑战赛（Vibe Coding 赛道）<br>选题方向：① 多 Agent 协同工作流看板 × ② 场景化轻量 RAG 知识库</div>
+
+<div class="meta-box">
+<b>作品一句话：</b>上传论文 PDF，五位 AI 评委（主席 + 4 位风格迥异的质询专家）在可视化沙盘上对「AI 答辩人」展开全真模拟答辩，输出五维评分雷达与主席终评报告。<br>
+<b>技术栈：</b>React 19 · Vite · TypeScript · Tailwind v4 · zustand · React Flow · ECharts · pdf.js · Express(Node) · DeepSeek API<br>
+<b>运行依赖：</b>Node.js ≥ 18 与一个 DeepSeek API Key（无任何付费服务 / 私有依赖）
+</div>
+
+<h2>一、作品概述</h2>
+<h3>1.1 痛点定义</h3>
+<p>每年全国有超过百万研究生与本科生参加学位论文答辩。答辩前的模拟练习存在三个真实痛点：</p>
+<ul>
+<li><b>没有对手</b>：学生只能"对着空气练习"，缺乏真实的高压质询环境；</li>
+<li><b>导师资源稀缺</b>：导师不可能反复陪练，模拟答辩组织的成本高；</li>
+<li><b>反馈不结构化</b>：真人练习后的意见碎片化，难以沉淀为可执行的改进清单。</li>
+</ul>
+<h3>1.2 解决方案</h3>
+<p>「赛博答辩厅」把答辩委员会搬进浏览器，构建一条 <b>论文 → 检索锚定 → 多智能体对抗 → 结构化反馈</b> 的完整产品闭环：</p>
+<table>
+<tr><th>环节</th><th>体验</th><th>技术支撑</th></tr>
+<tr><td>① 备战</td><td>拖入论文 PDF（全程本地解析，隐私零上传）</td><td>pdf.js 文本抽取 + 分块 + BM25 索引</td></tr>
+<tr><td>② 开场</td><td>AI 答辩人基于论文生成 5 分钟开场陈述（或使用用户自带稿）</td><td>检索 Top-5 片段注入 + 流式生成</td></tr>
+<tr><td>③ 质询</td><td>4 位评委轮流提问，AI 答辩人即时作答；画布实时展示消息流</td><td>多智能体编排状态机 + SSE 流式</td></tr>
+<tr><td>④ 追问</td><td>⚡压力模式：评委更尖锐，末轮针对此前回答连环追问</td><td>答辩记录压缩 + 条件分支 Prompt</td></tr>
+<tr><td>⑤ 评分</td><td>每位评委独立五维打分（选题/创新/方法/表达/工作量）</td><td>DeepSeek JSON 模式 + 校验回填</td></tr>
+<tr><td>⑥ 终评</td><td>主席输出结构化 Markdown 报告，可导出 .md</td><td>聚合评审上下文生成</td></tr>
+</table>
+
+<h2 class="page-break">二、意图控制策略（Prompt 工程）</h2>
+<p>本作品的核心竞争力在于"驾驭 AI 智能体"的方法论。以下四个意图控制手段贯穿全部生成环节：</p>
+
+<h3>2.1 幻觉约束——检索锚定</h3>
+<p>多智能体评审类应用最大的质量风险是评委"凭空编造论文内容"。我们的解法是把 <b>RAG 作为人设的一部分写进 System Prompt 纪律条款</b>：</p>
+<pre><code># 提问纪律（必须严格遵守）
+1. **锚定真实**：你的问题必须建立在提供的「论文摘录」之上，
+   严禁编造论文中不存在的内容或数据。
+2. **一次一问**：每次只提出一个问题，具体、可回答，长度 2-4 句，
+   不给答辩人逃答空间。
+3. **禁止重复**：参考「答辩记录」，不得重复任何已问过的问题。
+4. **联动深挖**：若答辩记录中其他评委的提问或答辩人的回答暴露了
+   新疑点，优先顺势深挖。
+5. **直入主题**：不要过渡语，不要客套。
+6. **压力模式已开启**：你的提问应当尖锐、连环、不留情面……</code></pre>
+<p>每次评委发言前，引擎以「评委关注维度 + 论文标题」（或追问场景下的「前问 + 前答」）为查询串，检索 Top-4 论文片段注入用户消息，形成 <b>「人设纪律 × 真实证据」双重约束</b>。答辩人的 System Prompt 同理：忠于论文、坦诚边界、结论先行。</p>
+
+<h3>2.2 差异化人设——正交评审维度</h3>
+<p>四位评委刻意覆盖四个不重叠的评审维度，避免多智能体"同质化发言"：</p>
+<table>
+<tr><th>评委</th><th>人格原型</th><th>正交维度</th><th>典型切入</th></tr>
+<tr><td>🔬 严正声（严博导）</td><td>方法论手术刀</td><td>方法严谨</td><td>基线对照、样本量、统计显著性、逻辑跳跃</td></tr>
+<tr><td>📖 温文澜（温和教授）</td><td>轻柔但极深</td><td>表达理解</td><td>用自己的话解释概念、研究动机、创新点陈述</td></tr>
+<tr><td>🏭 石力行（行业专家）</td><td>务实反黑话</td><td>落地价值</td><td>解决谁的什么问题、部署成本、工业界对比</td></tr>
+<tr><td>🚀 芮敏（青年学者）</td><td>顶会雷达</td><td>前沿创新</td><td>SOTA 对标、增量 vs 突破、相关工作遗漏</td></tr>
+</table>
+
+<h3>2.3 上下文工程——记录压缩</h3>
+<p>答辩到后期，完整记录会超出合理的上下文预算。我们实现了 <b>保头保尾的滑动窗口压缩</b>：保留开场两条 + 从最新往回回填直至 2.8K 字符预算，中间以省略号衔接。这样既保住了"联动深挖"所需的最新信息，又保留了开场的全局语境。评分与终评环节预算放宽至 3.6K/4.2K。</p>
+
+<h3>2.4 结构化输出——JSON 模式双保险</h3>
+<p>评分环节启用 DeepSeek <code>response_format: {type:'json_object'}</code>（服务端白名单放行），前端再以三重防御解析：剥离 Markdown 代码块包裹 → <code>indexOf('{')…lastIndexOf('}')</code> 截取 → 五维数值校验（缺失维度以有效分均值回填，全缺则重试），保证渲染层永远拿到合法的 <code>DimScores</code>。</p>
+
+<h2 class="page-break">三、架构设计</h2>
+<pre><code>┌────────────────────────── 浏览器 ──────────────────────────┐
+│  React 19 + Vite + Tailwind v4 + zustand                   │
+│                                                            │
+│  SetupWizard ──► ArenaCanvas(React Flow) ──► MessageFeed   │
+│       │                │      ▲                 │          │
+│       ▼                ▼      │                 ▼          │
+│  rag/pdf.ts ──► rag/chunker.ts ──► rag/bm25.ts            │
+│  (pdf.js抽取)     (600字分块+重叠)   (bigram分词BM25索引)   │
+│       │                                          ▲         │
+│       └──────────────────┬───────────────────────┘         │
+│                    agents/engine.ts（编排状态机）            │
+│     roles.ts(评委人设Prompt) │ 开场→质询→追问→评分→终评      │
+│                           ▼ 全部流式 SSE                    │
+└──────────────────────────┬─────────────────────────────────┘
+                           │ /api/chat（唯一出口）
+┌──────────────────────────▼─────────────────────────────────┐
+│  Express 单进程代理（server/index.mjs）                     │
+│  · 字段白名单透传 · 上游错误中文化 · 断开同步中止上游        │
+└──────────────────────────┬─────────────────────────────────┘
+                           ▼
+                  DeepSeek API（deepseek-chat / reasoner）</code></pre>
+
+<h3>3.1 模块解耦</h3>
+<table>
+<tr><th>模块</th><th>职责</th><th>关键设计决策</th></tr>
+<tr><td><code>src/rag/</code></td><td>解析流水线</td><td>纯函数、零副作用，BM25 手写实现避免任何向量服务依赖</td></tr>
+<tr><td><code>src/agents/roles.ts</code></td><td>人设与 Prompt 模板</td><td>纯数据+纯函数，与流程彻底分离，可独立演进人设</td></tr>
+<tr><td><code>src/agents/engine.ts</code></td><td>编排状态机</td><td>唯一直接调用 API 的模块；AbortController 贯穿全流程支持中止</td></tr>
+<tr><td><code>src/store/</code></td><td>状态仓库</td><td>zustand 单一数据源；仅设置持久化，过程态内存化</td></tr>
+<tr><td><code>server/index.mjs</code></td><td>流式代理</td><td>约 150 行；生产模式兼静态托管，单进程即可完整运行</td></tr>
+</table>
+
+<h3>3.2 数据流</h3>
+<p>一次典型质询的数据流：<br>
+<code>engine.askJudge</code> → 组装上下文（人设 + 标题/摘要 + BM25 Top-4 片段 + 压缩记录 + 指令）→ <code>streamChat</code> POST <code>/api/chat</code> → Express 白名单透传 DeepSeek → SSE 逐块回传 → 引擎 90ms 节流写入 store → React Flow 节点/边高亮 + MessageFeed 流式打字。答辩人作答同理，检索查询串换成评委问题原文。</p>
+
+<h2 class="page-break">四、关键技术实现</h2>
+
+<h3>4.1 轻量 RAG：为什么 BM25 就够了</h3>
+<p>单篇论文的分块规模通常在 50–150 块。在这个量级上，BM25 的检索质量与向量检索差距极小，而工程收益显著：无需 Embedding API（DeepSeek 亦不提供）、无需外部向量库、索引构建在毫秒级。分词器针对中英混排设计：<b>中文按二元词组（bigram）</b>（规避中文分词依赖），<b>英文按词级 + 停用词过滤</b>；BM25 参数取 k1=1.5、b=0.75。</p>
+
+<h3>4.2 分块策略：段落聚合 + 重叠窗口</h3>
+<p>以 600 字为目标块长、80 字重叠：先按换行切段落，段落聚合逼近目标长度；对无换行的超长段落（整页连排）回退为定长窗口硬切；相邻块保留尾部重叠以维护跨块语义连续；小于 100 字的尾块并入前块。每块携带页码，为后续"引用溯源"预留能力。</p>
+
+<h3>4.3 流式体验工程</h3>
+<ul>
+<li><b>节流写入</b>：SSE token 级回调以 90ms 节流刷新 store，避免高频重渲染拖慢画布动画；</li>
+<li><b>状态编排</b>：节点状态机 idle → thinking → speaking → done，边高亮跟随 <code>activeEdge</code>（质询=评委色发光边，答辩=青色回流）；</li>
+<li><b>思维链可视化</b>：兼容 deepseek-reasoner 的 <code>reasoning_content</code>，评委"深度思考"状态在节点上呈现。</li>
+</ul>
+
+<h3>4.4 鲁棒性设计</h3>
+<table>
+<tr><th>风险</th><th>防御</th></tr>
+<tr><td>网络抖动/流中断</td><td>非 Key 类错误自动重试一次（1.5s 退避）；评分 JSON 解析失败抛出可读错误</td></tr>
+<tr><td>用户中途离场</td><td>AbortController 全链路贯穿；客户端断开时服务端同步 abort 上游请求</td></tr>
+<tr><td>扫描版/加密 PDF</td><td>文本量 &lt; 200 字符判定扫描版并友好报错；PasswordException 单独提示</td></tr>
+<tr><td>API Key 泄露</td><td>Key 仅存浏览器 localStorage，服务端仅透传不落盘；白名单字段杜绝请求体注入</td></tr>
+<tr><td>上下文超长</td><td>答辩记录滑动窗口压缩（2.8K）；maxTokens 分级限制（问题 320 / 回答 700 / 终评 4096）</td></tr>
+</table>
+
+<h2 class="page-break">五、可复现性论证</h2>
+<ul>
+<li><b>十分钟复现</b>：README 提供四步指南（克隆安装 → npm run dev → 填 Key → 跑答辩），仓库自带示例论文 <code>public/sample-paper.pdf</code>，评委无需自备材料即可体验完整闭环；</li>
+<li><b>Prompt 演进链</b>：PROMPT_LOG.md 记录 5 条核心迭代链（意图 → 实现 → Bug 引导修复 → Git 提交对应），本作品开发中真实发生的编译错误（pdfjs v6 API 变更、TS 严格模式、类型宽度推断）及其修复过程均如实记录；</li>
+<li><b>细粒度提交</b>：Git 历史按功能模块逐次提交（脚手架 → 代理服务 → RAG → 引擎 → 画布 → 向导/报告 → 文档），每次提交对应一个可独立验证的功能增量，无"一次性 initial commit"；</li>
+<li><b>零私有依赖</b>：唯一外部服务是 DeepSeek API，任何评委注册即可复现，无付费墙。</li>
+</ul>
+
+<h2>六、工程质量与安全</h2>
+<ul>
+<li><b>类型安全</b>：TypeScript strict 模式（noUnusedLocals / erasableSyntaxOnly / verbatimModuleSyntax），<code>tsc -b</code> 零错误；</li>
+<li><b>构建验证</b>：<code>npm run build</code> 生产构建通过；Express 生产模式托管静态资源，单进程部署；</li>
+<li><b>隐私设计</b>：论文解析全程浏览器本地完成，只有检索命中的片段（每问约 2.4K 字符）发送给模型用于生成；</li>
+<li><b>错误体验</b>：上游 401/402/429/超时均翻译为中文提示；Key 无效/余额不足/限流分别引导。</li>
+</ul>
+
+<h2>七、国赛迭代规划</h2>
+<table>
+<tr><th>特性</th><th>技术方案</th><th>成本</th></tr>
+<tr><td>语音答辩（说给评委听）</td><td>Web Speech API（浏览器原生 STT/TTS）</td><td>零新增依赖</td></tr>
+<tr><td>答辩历史与多轮对比</td><td>localStorage 历史已预埋（SessionSummary）</td><td>纯前端</td></tr>
+<tr><td>评委自定义工坊</td><td>人设 Prompt 模板化，用户编排自己的委员会</td><td>roles.ts 已数据化</td></tr>
+<tr><td>答辩 PPT 建议</td><td>终评报告追加幻灯片大纲章节</td><td>一次 Prompt 扩展</td></tr>
+</table>
+
+<h2>八、总结</h2>
+<p>「赛博答辩厅」用 Vibe Coding 范式在极短周期内交付了一个<b>痛点真实、闭环完整、演示炸裂</b>的多智能体应用：人类专注于定义问题（选题决策、意图描述、验收引导），AI 承担全部代码生产。全部开发过程通过 PROMPT_LOG 与细粒度 Git 历史留痕，可复现、可审计——这本身就是对"意图驱动编程"这一赛题主旨的最佳注解。</p>
+
+</body>
+</html>
