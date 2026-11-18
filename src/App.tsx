@@ -139,7 +139,9 @@ export default function App() {
       )}
 
       <main className="min-h-0 flex-1">
-        <AnimatePresence mode="wait">
+        {/* sync 模式：新分支立即挂载（不依赖动画帧完成），
+            避免后台标签页 rAF 暂停时 AnimatePresence mode="wait" 无限阻塞分支切换 */}
+        <AnimatePresence initial={false}>
           {inArena ? (
             <motion.div
               key="arena"

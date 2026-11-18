@@ -513,6 +513,7 @@ export async function runArena(): Promise<void> {
       running: false,
       progressLabel: '答辩结束',
       activeEdge: null,
+      verdict,
     })
     saveSession(verdict)
   } catch (err) {
@@ -564,6 +565,7 @@ export async function runScoringOnly(): Promise<void> {
       running: false,
       progressLabel: '答辩结束',
       activeEdge: null,
+      verdict,
     })
     saveSession(verdict)
   } catch (err) {

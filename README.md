@@ -91,6 +91,20 @@ npm start       # 单进程托管（Express 同时提供 API 与静态资源）
 | 「API Key 无效」 | 检查 Key 是否复制完整、账户是否有余额 |
 | 「请求过于频繁」 | 触发限流，稍等几秒重试即可 |
 
+## 🧪 测试与离线演示
+
+```bash
+npm run test:rag   # 离线验证 RAG 管线（真实论文语料，无需 API Key）
+npm run mock:llm   # 启动本地 Mock LLM（OpenAI 兼容 SSE，端口 9909）
+# 另开终端，将上游指向 Mock 后启动，即可零成本体验完整答辩流程：
+# Windows (PowerShell):  $env:DEEPSEEK_BASE_URL="http://localhost:9909"; npm run dev
+# Linux/macOS:           DEEPSEEK_BASE_URL=http://localhost:9909 npm run dev
+```
+
+`public/test/` 自带中文示例论文与无文本层异常样本；两篇大体积英文论文（arXiv:1810.04805 / 2005.14165）未入库，测试脚本遇缺自动跳过，可按 `scripts/validate-rag.ts` 内编号自行下载。
+
+> 需要走自建网关/中转访问 DeepSeek 的用户：在 `.env` 中配置 `DEEPSEEK_BASE_URL` 即可（见 `.env.example`）。
+
 ## 🏗️ 架构设计
 
 ```

@@ -113,20 +113,49 @@
 
 ---
 
-## 迭代链 5 · 端到端验证（进行中）
+## 迭代链 5 · 验证设施：真实论文语料 + 离线 RAG 测试 + Mock LLM 全链路 E2E
 
-**验证轨迹：**
+**人类意图：**
 
-| 步骤 | 结果 |
+> 「你可以自己去找一些毕业论文，然后自己进行论文的验证。」
+
+**AI 响应（三层验证设施）：**
+
+1. **测试语料**：自建结构真实的中文学位论文 PDF（Edge 无头打印，含摘要/关键词/五章结构）、下载 arXiv 真实论文（BERT 16页、GPT-3 75页压力样本）、手工构造无文本层 PDF（异常路径）
+2. **`scripts/validate-rag.ts`**（`npm run test:rag`）：为使纯逻辑可被 Node 复用，将 pdf.ts 拆分出 `pdfCore.ts`（标题/摘要/校验零浏览器依赖），脚本直接 import 生产源码验证「抽取→标题→摘要→分块→BM25检索」
+3. **`scripts/mock-llm.mjs`**（`npm run mock:llm`）：OpenAI 兼容 SSE Mock，按 Prompt 特征区分质询/作答/评分/终评；服务端新增 `DEEPSEEK_BASE_URL` 覆盖能力（同时服务自建网关用户）
+
+**验证结果（全绿）：**
+
+| 验证项 | 结果 |
 |---|---|
-| `npm run dev` 双进程启动 | ✓ Express 3001 + Vite 5173 |
-| `GET /api/health` | ✓ `{"ok":true}` |
-| 无 Key 调用 `/api/chat` | ✓ 返回 401 中文友好提示 |
-| 首页渲染（1440×900 视觉评审） | ✓ PASS |
-| 注入示例论文 PDF 解析 | ✓ 15 页 / 39.6 千字 / 83 块 |
-| `npx tsc -b` 全量类型检查 | ✓ 零错误 |
-| `npm run build` 生产构建 | ✓（echarts+pdfjs 体积警告，功能不受影响） |
-| 完整答辩轮（需 API Key） | ☐ 待参赛者 Key 就绪后执行 |
+| 中文论文：标题/摘要/3组中文检索 | ✓ 全命中 |
+| BERT（16页130块）/ GPT-3（75页504块压力） | ✓ |
+| 无文本层 PDF → 友好报错"疑似扫描版" | ✓ |
+| Mock 全流程：开场→4问4答→4份评分→雷达→终评→历史 | ✓ 零 JS 错误 |
+
+**对应提交：** `refactor(rag)` / `feat(server)` 验证设施系列。
+
+---
+
+## 迭代链 6 · Mock E2E 揪出的两个真实缺陷
+
+Mock 全链路跑通的代价是发现了两个此前人工审计漏掉的 Bug——这正是 E2E 的价值：
+
+**Bug 1 · 终评报告未写入 store**
+- 症状：phase=done、历史已存，但 `store.verdict` 恒为空 → 报告弹窗永远显示"报告生成中…"、导出缺失主席终评
+- 根因：`runVerdict` 返回值只传给了 `saveSession`，漏了 `patch({ verdict })`
+- 修复：`runArena` 与 `runScoringOnly` 的终态 patch 均补上 `verdict`
+
+**Bug 2 · 后台标签页分支切换无限阻塞**
+- 症状：store 里 phase=questioning，DOM 却停留在向导页（无任何 JS 错误）
+- 排查：页面注入探针实测 **1 秒 0 个 requestAnimationFrame 回调**（渲染管线暂停）→ framer-motion `AnimatePresence mode="wait"` 的退出动画永远等不到帧，新分支被无限期推迟挂载
+- 用户影响：真实浏览器后台标签页下同样可触发（rAF 节流），答辩启动后切窗口会冻结界面
+- 修复：改为同步挂载模式（`initial={false}` 不带 mode），动画仅作视觉过渡，不再阻塞渲染
+
+**连带加固：** Vite `optimizeDeps.include` 预声明懒加载依赖，消除"运行中依赖优化触发整页 reload 清空内存态"的干扰源。
+
+**对应提交：** `fix(engine)` / `fix(ui)` 系列。
 
 ---
 

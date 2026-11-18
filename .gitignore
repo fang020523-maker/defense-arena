@@ -17,6 +17,9 @@ dist-ssr
 .env.*
 !.env.example
 
+# 大体积英文测试论文（validate-rag 遇缺自动跳过；可按 scripts/validate-rag.ts 中的 arXiv 编号自行下载）
+public/test/paper-en-*.pdf
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

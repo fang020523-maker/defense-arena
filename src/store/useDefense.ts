@@ -154,3 +154,8 @@ export const useDefense = create<DefenseState>()(
     },
   ),
 )
+
+// 开发环境调试钩子：便于 E2E 测试与问题排查（生产构建自动剔除）
+if (import.meta.env.DEV) {
+  ;(window as unknown as { __defense?: typeof useDefense }).__defense = useDefense
+}
