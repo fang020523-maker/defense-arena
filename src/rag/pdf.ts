@@ -74,8 +74,16 @@ export function guessThesisTitle(pages: PdfPageText[]): string {
     .filter((p) => p.page <= 2)
     .flatMap((p) => p.text.split('\n'))
     .map((l) => l.trim())
+  // 排除：纯数字、版权/出版信息、以小写英文开头（多为正文接行）的行
+  const junk =
+    /(学[士位]论文|university|scholarly works|distributed under|copyright|arxiv|preprint|proceedings|licensed|doi)/i
   const candidate = head.find(
-    (l) => l.length >= 6 && l.length <= 60 && !/^\d+$/.test(l) && !/(学[士位]论文|university|university press)/i.test(l),
+    (l) =>
+      l.length >= 6 &&
+      l.length <= 60 &&
+      !/^\d+$/.test(l) &&
+      !junk.test(l) &&
+      !/^[a-z]/.test(l),
   )
   return candidate ?? head.find((l) => l.length >= 4) ?? '未命名论文'
 }

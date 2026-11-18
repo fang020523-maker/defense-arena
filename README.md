@@ -1,32 +1,172 @@
-# React + TypeScript + Vite
+<div align="center">
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+# ⚔️ 赛博答辩厅 · Defense Arena
 
-Currently, two official plugins are available:
+**多智能体模拟毕业答辩沙盘 —— 让 AI 评委对你的论文展开一场全真高压质询**
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+上传论文 PDF → 本地构建检索索引 → 5 位 AI 评委（主席 + 4 位风格迥异的质询专家）实时对抗质询 → 五维评分雷达 + 主席终评报告
 
-## React Compiler
+*2026 传智杯全国大学生数智创新与AI应用大赛 · AI创新应用挑战赛（Vibe Coding 赛道）参赛作品*
+*选题方向：① 多 Agent 协同工作流看板 × ② 场景化轻量 RAG 知识库*
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+</div>
 
-## Expanding the Oxlint configuration
+---
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+## ✨ 产品是什么
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+每一位毕业生在答辩前都只能「对着空气练习」。**赛博答辩厅**把答辩委员会搬进浏览器：
+
+| 委员 | 人设 | 关注维度 |
+|---|---|---|
+| ⚖️ 程远山（主席） | 终评权威 | 全局质量、终评报告 |
+| 🔬 严正声（严博导） | 方法论手术刀 | 实验设计、数据可靠性、逻辑链条 |
+| 📖 温文澜（温和教授） | 看似轻柔实则极深 | 概念理解、研究动机、表达条理 |
+| 🏭 石力行（行业专家） | 务实、对学术黑话过敏 | 应用场景、落地成本、真实需求 |
+| 🚀 芮敏（青年学者） | 追踪顶会、问题密度大 | 与 SOTA 对比、创新成色、技术趋势 |
+
+**核心玩法**
+
+1. **上传论文**：拖入 PDF，全程本地解析（pdf.js），论文不上传任何服务器
+2. **本地 RAG 锚定**：文本分块 + BM25 索引，评委每个问题都基于检索到的真实论文片段，杜绝幻觉
+3. **全真答辩流程**：AI 答辩人开场陈述 → 多轮质询（评委能看到彼此问答并联动深挖）→ ⚡压力模式连环追问
+4. **结构化评分**：每位评委独立打分（JSON 模式输出），五维雷达图可视化
+5. **终评报告**：主席生成 Markdown 报告——总体评价 / 最尖锐三问 / 薄弱环节诊断 / 改进建议清单 / 答辩技巧提示，可一键导出
+
+## 🎬 十分钟极速复现指南
+
+### 环境要求
+
+| 依赖 | 版本 | 检查命令 |
+|---|---|---|
+| Node.js | ≥ 18 | `node -v` |
+| npm | ≥ 9 | `npm -v` |
+| Git | 任意 | `git -v` |
+
+### 第 1 步：克隆并安装（约 2 分钟）
+
+```bash
+git clone <你的仓库地址>
+cd defense-arena
+npm install
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+### 第 2 步：启动（约 10 秒）
+
+```bash
+npm run dev
+```
+
+浏览器打开 **http://localhost:5173** 即可使用（本地代理服务自动运行在 3001 端口，无需额外配置）。
+
+### 第 3 步：获取 DeepSeek API Key（约 3 分钟）
+
+1. 打开 [platform.deepseek.com](https://platform.deepseek.com) 注册并实名（新账户通常自带免费额度）
+2. 左侧「API Keys」→ 创建 Key 并复制
+3. 粘贴到页面右侧「DeepSeek API Key」输入框 → 点击「测试」看到 ✓ 即可
+
+> 🔒 Key 仅保存在你自己浏览器的 localStorage，仅用于从你的本机直连你自己的 DeepSeek 账户。服务端 `.env` 也支持配置默认 Key（见 `.env.example`），但推荐评委复现时用前端填 Key 的方式。
+
+### 第 4 步：跑一场完整答辩（约 5 分钟）
+
+1. 拖入一篇论文 PDF（仓库自带示例：`public/sample-paper.pdf`，也可用任何文字版论文）
+2. 配置：答辩类型 / 学科领域 / 质询轮数（第一次建议 **1 轮·极速**）/ 是否开启⚡压力模式
+3. 点击 **「开始答辩」**，观看画布上多智能体实时对抗
+4. 答辩结束后自动弹出终评报告，可导出 `.md`
+
+### 生产模式（可选）
+
+```bash
+npm run build   # 构建前端
+npm start       # 单进程托管（Express 同时提供 API 与静态资源）
+```
+
+### 常见问题
+
+| 现象 | 处理 |
+|---|---|
+| 「无法连接本地代理服务」 | 确认用 `npm run dev` 启动（而非只跑 `vite`），3001 端口未被占用 |
+| 「疑似扫描版 PDF」 | 本工具只解析文字层 PDF；扫描件需先 OCR |
+| 「API Key 无效」 | 检查 Key 是否复制完整、账户是否有余额 |
+| 「请求过于频繁」 | 触发限流，稍等几秒重试即可 |
+
+## 🏗️ 架构设计
+
+```
+┌────────────────────────── 浏览器 ──────────────────────────┐
+│  React 19 + Vite + Tailwind v4 + zustand                   │
+│                                                            │
+│  SetupWizard ──► ArenaCanvas(React Flow) ──► MessageFeed   │
+│       │                │      ▲                 │          │
+│       ▼                ▼      │                 ▼          │
+│  rag/pdf.ts ──► rag/chunker.ts ──► rag/bm25.ts            │
+│  (pdf.js抽取)     (600字分块+重叠)   (bigram分词BM25索引)   │
+│       │                                          ▲         │
+│       └──────────────────┬───────────────────────┘         │
+│                    agents/engine.ts（编排状态机）            │
+│     roles.ts(评委人设Prompt) │ 开场→质询→追问→评分→终评      │
+│                           ▼ 全部流式 SSE                    │
+└──────────────────────────┬─────────────────────────────────┘
+                           │ /api/chat（仅此一个出口）
+┌──────────────────────────▼─────────────────────────────────┐
+│  Express 单进程代理（server/index.mjs）                     │
+│  · 白名单字段透传 · 上游错误中文化 · 断开同步中止上游        │
+└──────────────────────────┬─────────────────────────────────┘
+                           ▼
+                  DeepSeek API（deepseek-chat / reasoner）
+```
+
+**模块职责**
+
+- `src/rag/` —— 论文解析流水线：pdf.js 文本抽取 → 段落聚合分块（600 字 + 80 重叠，保留页码）→ BM25 索引（中文二元词组 + 英文词级分词，纯前端零依赖）
+- `src/agents/roles.ts` —— 5 位智能体的人设与 System Prompt（幻觉约束 / 联动去重 / 压力开关）
+- `src/agents/engine.ts` —— 答辩编排状态机：每步流式写入 store，支持中止后续评、网络错误自动重试
+- `src/store/useDefense.ts` —— zustand 全局状态（设置持久化到 localStorage）
+- `server/index.mjs` —— 唯一后端：SSE 流式代理 + 生产静态托管
+
+**Prompt 工程要点**（详见 `docs/技术文档.pdf`）
+
+1. **幻觉约束**：评委 System Prompt 强制「提问必须建立在论文摘录之上」，每问检索 Top-4 片段注入上下文
+2. **联动机制**：评委共享压缩后的答辩记录，禁止重复提问、鼓励对暴露的疑点顺势深挖
+3. **结构化输出**：评分环节使用 DeepSeek JSON 模式 + 前端五维校验回填，保证可解析
+4. **风格开关**：压力模式通过同一段人设 Prompt 的条件分支改变提问尖锐度与追问策略
+
+## 🗂️ 仓库结构
+
+```
+defense-arena/
+├── server/index.mjs        # DeepSeek SSE 流式代理（Express）
+├── src/
+│   ├── agents/
+│   │   ├── roles.ts        # 委员会人设与 System Prompt
+│   │   └── engine.ts       # 答辩编排状态机
+│   ├── api/deepseek.ts     # 流式对话客户端 + JSON 稳健解析
+│   ├── rag/
+│   │   ├── pdf.ts          # pdf.js 文本抽取（加密/扫描件友好报错）
+│   │   ├── chunker.ts      # 语义分块（页码溯源）
+│   │   └── bm25.ts         # 轻量 BM25 检索（零依赖）
+│   ├── components/         # 画布/消息流/向导/雷达/报告等 UI
+│   ├── store/useDefense.ts # zustand 状态仓库
+│   └── types.ts            # 全局类型
+├── docs/                   # 技术文档、演示视频脚本
+├── public/sample-paper.pdf # 示例论文（评委可直接体验）
+├── PROMPT_LOG.md           # AI 协同开发 Prompt 演进日志
+└── .env.example            # 环境变量模板
+```
+
+## 📜 复现性声明
+
+- 全部开发过程借助 AI 辅助编程完成，人机协作的完整 Prompt 演进链见 **[PROMPT_LOG.md](./PROMPT_LOG.md)**
+- Git 提交历史按功能模块细粒度提交，每次提交对应一次与 AI 的核心交互或一个功能落地
+- 本项目**未使用任何付费服务/私有依赖**：唯一外部依赖是 DeepSeek API（参赛者自备 Key 即可复现）
+
+## 🧭 路线图（国赛迭代）
+
+- [ ] Web Speech API 语音答辩（浏览器原生，零成本）
+- [ ] 答辩历史与多轮模拟对比
+- [ ] 评委角色自定义工坊（用户编排自己的人设委员会）
+- [ ] 答辩 PPT 生成建议
+
+---
+
+<div align="center">Made with ⚡ Vibe Coding · 2026 传智杯 AI创新应用挑战赛</div>
