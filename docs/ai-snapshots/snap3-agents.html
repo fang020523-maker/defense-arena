@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>AI对话快照 · 迭代链3 多智能体编排引擎</title>
+<style>
+  @page { size: A4; margin: 14mm 13mm; }
+  * { box-sizing: border-box; }
+  body { font-family: "Microsoft YaHei", sans-serif; color: #1a2233; line-height: 1.7; font-size: 10pt; margin: 0; }
+  .head { border-bottom: 3px solid #0891b2; padding-bottom: 8px; margin-bottom: 14px; }
+  .head h1 { font-size: 15pt; margin: 0 0 4px; }
+  .meta { font-size: 9pt; color: #64748b; }
+  .meta b { color: #0e7490; }
+  .note { background: #f0f9ff; border-left: 3px solid #38bdf8; padding: 6px 10px; font-size: 8.5pt; color: #475569; margin-bottom: 14px; border-radius: 0 6px 6px 0; }
+  .chat { display: flex; flex-direction: column; gap: 10px; }
+  .msg { max-width: 88%; padding: 9px 13px; border-radius: 12px; font-size: 9.5pt; }
+  .human { align-self: flex-end; background: #e0f2fe; border: 1px solid #7dd3fc; border-bottom-right-radius: 3px; }
+  .ai { align-self: flex-start; background: #f1f5f9; border: 1px solid #cbd5e1; border-bottom-left-radius: 3px; }
+  .who { font-size: 8pt; font-weight: bold; margin-bottom: 4px; }
+  .human .who { color: #0369a1; }
+  .ai .who { color: #7c3aed; }
+  pre { background: #0f172a; color: #e2e8f0; border-radius: 8px; padding: 9px 12px; font-size: 8pt; line-height: 1.5; overflow-x: auto; margin: 7px 0; white-space: pre-wrap; }
+  code { font-family: Consolas, monospace; }
+  .inline { background: #f1f5f9; padding: 0 4px; border-radius: 3px; font-size: 8.5pt; }
+  .tag { display: inline-block; background: #ecfdf5; color: #047857; border: 1px solid #6ee7b7; border-radius: 10px; padding: 0 8px; font-size: 8pt; margin-right: 4px; }
+  .result { background: #ecfdf5; border: 1px dashed #6ee7b7; border-radius: 8px; padding: 8px 12px; font-size: 9pt; margin-top: 12px; }
+  .result b { color: #047857; }
+</style>
+</head>
+<body>
+
+<div class="head">
+  <h1>迭代链 3 · 评委人设 Prompt 与多智能体编排引擎</h1>
+  <div class="meta">对应提交 <b>99fc5a2</b> feat(agents) · 模块：src/agents/（roles.ts / engine.ts）</div>
+</div>
+
+<div class="note">本链展示<b>意图控制策略</b>的核心设计过程，以及一次真实的类型系统 Bug 引导修复。</div>
+
+<div class="chat">
+
+  <div class="msg human">
+    <div class="who">👤 人类（参赛者意图 · 核心约束）</div>
+    「五位评委要有真实人格差异，问题必须锚定论文真实内容不许编造；评委要能看到彼此的问答记录、不许问重复问题；压力模式下末轮要有连环追问。评分用 JSON 模式，主席最后写结构化终评报告。全程流式，中途可以中止并直接跳去评分。」
+  </div>
+
+  <div class="msg ai">
+    <div class="who">🤖 AI 实现要点（roles.ts）</div>
+    <pre>四位评委覆盖正交评审维度（防同质化发言）：
+  严正声·方法严谨 | 温文澜·表达理解 | 石力行·落地价值 | 芮敏·前沿创新
+
+System Prompt「提问纪律」五条：
+  ① 锚定真实：问题必须建立在检索片段之上，严禁编造
+  ② 一次一问 ③ 禁止重复（参考答辩记录）④ 联动深挖 ⑤ 直入主题
+  ⑥ 压力模式条件分支（同一人设两种尖锐度）
+
+答辩人 Prompt：忠于论文 / 坦诚边界 / 结论先行 150-300字</pre>
+  </div>
+
+  <div class="msg ai">
+    <div class="who">🤖 AI 实现要点（engine.ts）</div>
+    <pre>状态机：开场→N轮×4评委质询→(压力追问)→JSON评分→主席终评
+- 每问检索 Top-4 片段注入上下文（查询串=评委关注维度/前问+前答）
+- 答辩记录滑动窗口压缩至 2.8K 字符（保头保尾）
+- AbortController 全链路贯穿；网络错误自动重试一次（Key类错误不重试）</pre>
+  </div>
+
+  <div class="msg ai">
+    <div class="who">🤖 编译报错（真实踩坑）</div>
+    <pre style="color:#fca5a5">engine.ts(470,14): error TS1345: An expression of type 'void' cannot be tested for truthiness.</pre>
+    原因：askJudge 首版签名是 Promise&lt;void&gt;，主循环却写了 <code>const q = await askJudge(...); if (!q) continue</code>。
+  </div>
+
+  <div class="msg human">
+    <div class="who">👤 人类（修复引导）</div>
+    「让它返回问题消息本身，主循环直接拿返回值去驱动答辩人作答——顺便把点击开始后画布切换的白屏间隙也处理掉。」
+  </div>
+
+  <div class="msg ai">
+    <div class="who">🤖 AI 修复</div>
+    <pre>① askJudge 签名 → Promise&lt;ArenaMessage | null&gt;，直接返回 streamToMessage 结果
+② 引擎启动初始 patch 立即置 phase='opening'，UI 无缝切换无白屏</pre>
+  </div>
+
+</div>
+
+<div class="result">
+  <b>✅ 验证结果</b>：Mock E2E 全链路（开场→8问8答→4评分→终评2317字→历史）零错误；真实 Key 答辩 85 秒完整跑通，评委问题全部带片段引用标注。
+  <br><span class="tag">提交 99fc5a2</span><span class="tag">联动提交 03b6fdd（思维链可视化）</span>
+</div>
+
+</body>
+</html>

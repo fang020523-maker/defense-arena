@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>AI对话快照 · 迭代链2 RAG管线与pdfjs真实Bug修复</title>
+<style>
+  @page { size: A4; margin: 14mm 13mm; }
+  * { box-sizing: border-box; }
+  body { font-family: "Microsoft YaHei", sans-serif; color: #1a2233; line-height: 1.7; font-size: 10pt; margin: 0; }
+  .head { border-bottom: 3px solid #0891b2; padding-bottom: 8px; margin-bottom: 14px; }
+  .head h1 { font-size: 15pt; margin: 0 0 4px; }
+  .meta { font-size: 9pt; color: #64748b; }
+  .meta b { color: #0e7490; }
+  .note { background: #f0f9ff; border-left: 3px solid #38bdf8; padding: 6px 10px; font-size: 8.5pt; color: #475569; margin-bottom: 14px; border-radius: 0 6px 6px 0; }
+  .chat { display: flex; flex-direction: column; gap: 10px; }
+  .msg { max-width: 88%; padding: 9px 13px; border-radius: 12px; font-size: 9.5pt; }
+  .human { align-self: flex-end; background: #e0f2fe; border: 1px solid #7dd3fc; border-bottom-right-radius: 3px; }
+  .ai { align-self: flex-start; background: #f1f5f9; border: 1px solid #cbd5e1; border-bottom-left-radius: 3px; }
+  .who { font-size: 8pt; font-weight: bold; margin-bottom: 4px; }
+  .human .who { color: #0369a1; }
+  .ai .who { color: #7c3aed; }
+  pre { background: #0f172a; color: #e2e8f0; border-radius: 8px; padding: 9px 12px; font-size: 8pt; line-height: 1.5; overflow-x: auto; margin: 7px 0; white-space: pre-wrap; }
+  code { font-family: Consolas, monospace; }
+  .inline { background: #f1f5f9; padding: 0 4px; border-radius: 3px; font-size: 8.5pt; }
+  .tag { display: inline-block; background: #ecfdf5; color: #047857; border: 1px solid #6ee7b7; border-radius: 10px; padding: 0 8px; font-size: 8pt; margin-right: 4px; }
+  .result { background: #ecfdf5; border: 1px dashed #6ee7b7; border-radius: 8px; padding: 8px 12px; font-size: 9pt; margin-top: 12px; }
+  .result b { color: #047857; }
+</style>
+</head>
+<body>
+
+<div class="head">
+  <h1>迭代链 2 · 论文 RAG 管线 与 pdf.js v6 真实 Bug 修复</h1>
+  <div class="meta">对应提交 <b>a811864</b> feat(rag) · 模块：src/rag/（pdf.ts / pdfCore.ts / chunker.ts / bm25.ts）</div>
+</div>
+
+<div class="note">本链包含一次<b>完整的编译报错 → 定位 → 引导修复</b>过程，以及后续真实论文验证阶段发现并修复的<b>标题识别缺陷</b>。</div>
+
+<div class="chat">
+
+  <div class="msg human">
+    <div class="who">👤 人类（参赛者意图）</div>
+    「论文解析全部在浏览器本地做（这是隐私卖点），不要向量数据库、不要 Embedding API——DeepSeek 没有 embedding 接口，检索就用轻量 BM25，中文分词你自己设计。加密 PDF 和扫描版要给友好报错。」
+  </div>
+
+  <div class="msg ai">
+    <div class="who">🤖 AI 首版实现</div>
+    <pre>pdf.ts   ：pdf.js 逐页 getTextContent（hasEOL 保留段落）→ <200字符判定扫描版
+chunker.ts：段落聚合 600字/块 + 80字重叠 + 页码溯源 + 尾块合并
+bm25.ts  ：中文二元词组(bigram) + 英文词级 + 停用词；k1=1.5 b=0.75 手写索引</pre>
+  </div>
+
+  <div class="msg ai">
+    <div class="who">🤖 编译报错（真实踩坑）</div>
+    <pre style="color:#fca5a5">src/rag/pdf.ts(58,13): error TS2339: Property 'destroy' does not exist on type 'PDFDocumentProxy'.
+src/rag/bm25.ts(47,15): error TS1294: 参数属性语法在 erasableSyntaxOnly 下不允许</pre>
+  </div>
+
+  <div class="msg human">
+    <div class="who">👤 人类（修复引导）</div>
+    「看下 pdfjs-dist v6 的类型定义，用 loadingTask 生命周期管理，别用不存在的 API；TS 严格模式的限制就按它的规矩改写。」
+  </div>
+
+  <div class="msg ai">
+    <div class="who">🤖 AI 修复</div>
+    <pre>- 持有 loadingTask 引用：await loadingTask.destroy()（v6 正确生命周期）
+- BM25 构造器参数属性 → 显式私有字段声明
+- 顺带修复：chunker 定长窗口回退、加密 PDF PasswordException 单独提示</pre>
+    <code>tsc -b</code> 零错误通过。
+  </div>
+
+  <div class="msg human">
+    <div class="who">👤 人类（验证指令 · 真实论文回归）</div>
+    「你可以自己去找一些毕业论文，然后自己进行论文的验证。」
+  </div>
+
+  <div class="msg ai">
+    <div class="who">🤖 AI 验证发现新缺陷并修复</div>
+    用真实 arXiv 论文回归时，标题被识别成版权行 <i>"scholarly works."</i> ——启发式过滤不足。
+    <pre>修复：guessThesisTitle 增加垃圾行过滤
+（copyright/arxiv/distributed under/小写英文开头行）→ 正确识别 "Attention Is All You Need"</pre>
+    随后建立离线验证脚本 <code>scripts/validate-rag.ts</code>（提交 <code>fcf5829</code>）：
+    <pre>中文论文（自建真实结构）+ BERT(16页) + GPT-3(75页504块压力) + 无文本层异常PDF
+断言：标题/摘要/分块数/3组BM25检索命中 → 全部通过 🎉</pre>
+  </div>
+
+</div>
+
+<div class="result">
+  <b>✅ 验证结果</b>：四类语料 + 异常路径全通过；为使纯逻辑可被 Node 测试复用，还将 pdf.ts 拆分出零浏览器依赖的 <b>pdfCore.ts</b>（重构即测试基建）。
+  <br><span class="tag">提交 a811864</span><span class="tag">提交 fcf5829（验证设施）</span><span class="tag">提交 5cc3483（标题识别修复随审计提交）</span>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>AI对话快照 · 迭代链4 E2E验证揪出两个隐藏缺陷</title>
+<style>
+  @page { size: A4; margin: 14mm 13mm; }
+  * { box-sizing: border-box; }
+  body { font-family: "Microsoft YaHei", sans-serif; color: #1a2233; line-height: 1.7; font-size: 10pt; margin: 0; }
+  .head { border-bottom: 3px solid #0891b2; padding-bottom: 8px; margin-bottom: 14px; }
+  .head h1 { font-size: 15pt; margin: 0 0 4px; }
+  .meta { font-size: 9pt; color: #64748b; }
+  .meta b { color: #0e7490; }
+  .note { background: #f0f9ff; border-left: 3px solid #38bdf8; padding: 6px 10px; font-size: 8.5pt; color: #475569; margin-bottom: 14px; border-radius: 0 6px 6px 0; }
+  .chat { display: flex; flex-direction: column; gap: 10px; }
+  .msg { max-width: 88%; padding: 9px 13px; border-radius: 12px; font-size: 9.5pt; }
+  .human { align-self: flex-end; background: #e0f2fe; border: 1px solid #7dd3fc; border-bottom-right-radius: 3px; }
+  .ai { align-self: flex-start; background: #f1f5f9; border: 1px solid #cbd5e1; border-bottom-left-radius: 3px; }
+  .who { font-size: 8pt; font-weight: bold; margin-bottom: 4px; }
+  .human .who { color: #0369a1; }
+  .ai .who { color: #7c3aed; }
+  pre { background: #0f172a; color: #e2e8f0; border-radius: 8px; padding: 9px 12px; font-size: 8pt; line-height: 1.5; overflow-x: auto; margin: 7px 0; white-space: pre-wrap; }
+  code { font-family: Consolas, monospace; }
+  .inline { background: #f1f5f9; padding: 0 4px; border-radius: 3px; font-size: 8.5pt; }
+  .tag { display: inline-block; background: #ecfdf5; color: #047857; border: 1px solid #6ee7b7; border-radius: 10px; padding: 0 8px; font-size: 8pt; margin-right: 4px; }
+  .result { background: #ecfdf5; border: 1px dashed #6ee7b7; border-radius: 8px; padding: 8px 12px; font-size: 9pt; margin-top: 12px; }
+  .result b { color: #047857; }
+</style>
+</head>
+<body>
+
+<div class="head">
+  <h1>迭代链 4 · 验证设施建设 → E2E 揪出两个隐藏缺陷</h1>
+  <div class="meta">对应提交 <b>fcf5829</b> 验证设施 · <b>853898a</b> Mock LLM · <b>2c538c2</b> 缺陷修复</div>
+</div>
+
+<div class="note">本链是「用自动化验证引导 AI 修 Bug」的完整范例：<b>人工审计未发现</b>的两个缺陷，被零成本 E2E 当场揪出。</div>
+
+<div class="chat">
+
+  <div class="msg human">
+    <div class="who">👤 人类（验证指令）</div>
+    「依据审查表和流程过程全面对我们的内容进行一次审计，检查核验有什么地方不足。」→ 修复批次后：「你可以自己去找一些毕业论文，然后自己进行论文的验证。」
+  </div>
+
+  <div class="msg ai">
+    <div class="who">🤖 AI 构建三层验证设施</div>
+    <pre>① scripts/validate-rag.ts（npm run test:rag）：真实论文语料离线断言
+② scripts/mock-llm.mjs：OpenAI兼容SSE Mock（区分质询/作答/评分/终评）
+③ server 支持 DEEPSEEK_BASE_URL 覆盖 → 本地Mock零成本跑通全流程
+   （该能力同时服务自建网关用户）</pre>
+  </div>
+
+  <div class="msg ai">
+    <div class="who">🤖 E2E 发现缺陷 #1（现象）</div>
+    Mock 全流程跑完：phase=done、历史已存、雷达正常——但 <code>store.verdict</code> 恒为空，报告弹窗永远显示「报告生成中…」，导出缺失主席终评。
+  </div>
+
+  <div class="msg human">
+    <div class="who">👤 人类（修复引导）</div>
+    「E2E 能发现人工审计漏掉的问题，很好。顺着调用链查终评结果的去向，两处调用点都补上，别只修一处。」
+  </div>
+
+  <div class="msg ai">
+    <div class="who">🤖 AI 根因修复</div>
+    <pre>根因：runVerdict 返回值只传给了 saveSession，漏 patch({verdict})
+修复：runArena 与 runScoringOnly 终态 patch 均补 verdict 写入</pre>
+  </div>
+
+  <div class="msg ai">
+    <div class="who">🤖 E2E 发现缺陷 #2（诡异现象）</div>
+    store 里 phase=questioning，DOM 却停留在向导页，<b>零 JS 错误</b>。页面注入探针实测：<b>1 秒 0 个 requestAnimationFrame 回调</b>（渲染管线暂停）→ framer-motion <code>AnimatePresence mode="wait"</code> 的退出动画永远等不到帧，新分支被无限期阻塞。<b>真实用户在后台标签页同样会触发此冻结。</b>
+  </div>
+
+  <div class="msg ai">
+    <div class="who">🤖 AI 修复</div>
+    <pre>改同步挂载（去掉 mode="wait"，initial={false}）：
+动画仅作视觉过渡，不再阻塞分支切换 → 后台标签页不再冻结
+连带加固：vite optimizeDeps 预声明懒加载依赖
+（消除"运行中依赖优化→整页reload→内存态清空"干扰源）</pre>
+  </div>
+
+</div>
+
+<div class="result">
+  <b>✅ 验证结果</b>：修复后 Mock E2E 全绿（4问4答/4评分/雷达/472字终评/历史，0 JS 错误）；随后真实 Key 全流程 85 秒跑通。
+  <br><span class="tag">提交 fcf5829</span><span class="tag">提交 853898a</span><span class="tag">提交 2c538c2（两缺陷修复）</span>
+</div>
+
+</body>
+</html>

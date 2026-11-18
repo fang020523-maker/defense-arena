@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>AI对话快照 · 迭代链1 服务端流式代理</title>
+<style>
+  @page { size: A4; margin: 14mm 13mm; }
+  * { box-sizing: border-box; }
+  body { font-family: "Microsoft YaHei", sans-serif; color: #1a2233; line-height: 1.7; font-size: 10pt; margin: 0; }
+  .head { border-bottom: 3px solid #0891b2; padding-bottom: 8px; margin-bottom: 14px; }
+  .head h1 { font-size: 15pt; margin: 0 0 4px; }
+  .meta { font-size: 9pt; color: #64748b; }
+  .meta b { color: #0e7490; }
+  .note { background: #f0f9ff; border-left: 3px solid #38bdf8; padding: 6px 10px; font-size: 8.5pt; color: #475569; margin-bottom: 14px; border-radius: 0 6px 6px 0; }
+  .chat { display: flex; flex-direction: column; gap: 10px; }
+  .msg { max-width: 88%; padding: 9px 13px; border-radius: 12px; font-size: 9.5pt; }
+  .human { align-self: flex-end; background: #e0f2fe; border: 1px solid #7dd3fc; border-bottom-right-radius: 3px; }
+  .ai { align-self: flex-start; background: #f1f5f9; border: 1px solid #cbd5e1; border-bottom-left-radius: 3px; }
+  .who { font-size: 8pt; font-weight: bold; margin-bottom: 4px; }
+  .human .who { color: #0369a1; }
+  .ai .who { color: #7c3aed; }
+  pre { background: #0f172a; color: #e2e8f0; border-radius: 8px; padding: 9px 12px; font-size: 8pt; line-height: 1.5; overflow-x: auto; margin: 7px 0; white-space: pre-wrap; }
+  code { font-family: Consolas, monospace; }
+  .inline { background: #f1f5f9; padding: 0 4px; border-radius: 3px; font-size: 8.5pt; }
+  .tag { display: inline-block; background: #ecfdf5; color: #047857; border: 1px solid #6ee7b7; border-radius: 10px; padding: 0 8px; font-size: 8pt; margin-right: 4px; }
+  .result { background: #ecfdf5; border: 1px dashed #6ee7b7; border-radius: 8px; padding: 8px 12px; font-size: 9pt; margin-top: 12px; }
+  .result b { color: #047857; }
+</style>
+</head>
+<body>
+
+<div class="head">
+  <h1>迭代链 1 · DeepSeek 流式代理服务（server/index.mjs）</h1>
+  <div class="meta">对应提交 <b>1aad5b1</b> feat(server) · 模块：Express 单进程 SSE 代理 · 会话工具：ZCode Agent（GLM）</div>
+</div>
+
+<div class="note">本快照忠实还原参赛作品开发会话中的人机协作过程。<b>人类气泡</b>为参赛者原话或其批准的开发计划中的意图指令；<b>AI 气泡</b>为助手真实输出与工具调用的摘录。</div>
+
+<div class="chat">
+
+  <div class="msg human">
+    <div class="who">👤 人类（参赛者意图）</div>
+    「搭好前后端骨架。后端做一个 Express 代理把 DeepSeek 的 SSE 流原样转发给前端，API Key 让用户在前端填自己的，服务端只做白名单透传，不要把我的 Key 硬编码进代码。」
+  </div>
+
+  <div class="msg ai">
+    <div class="who">🤖 AI 实现</div>
+    设计单文件代理 <code>server/index.mjs</code>（约150行）：
+    <pre>- POST /api/chat：字段白名单透传（model/messages/temperature/max_tokens/top_p）
+- Key 三级来源：请求头 x-api-key &gt; 环境变量 DEEPSEEK_API_KEY &gt; 400
+- 上游 fetch(stream:true) → res.write() 逐块转发 SSE
+- 客户端断开时 res.on('close') 同步 abort 上游（AbortController）
+- GET /api/health 健康检查；生产模式托管 dist 静态资源</pre>
+  </div>
+
+  <div class="msg human">
+    <div class="who">👤 人类（验收引导 · 评分功能需求）</div>
+    「评分环节要模型输出严格 JSON，前端要传 response_format；评委输出偶尔会带 ```json 代码块包裹，双端都要兜住，不能让一次脏输出毁掉整场答辩。」
+  </div>
+
+  <div class="msg ai">
+    <div class="who">🤖 AI 修复迭代</div>
+    三重防御：
+    <pre>① 服务端白名单放行 response_format（仅 {type:'json_object'}，防请求体注入）
+② 上游 401/402/429/超时错误码 → 中文提示（"余额不足""触发限流"…）
+③ 前端 extractJson()：剥离 ```json 包裹 → indexOf('{')…lastIndexOf('}') 截取 → 解析</pre>
+    另发现 deepseek-reasoner 不支持 response_format（会 400）——评分调用在客户端按模型自动降级为 extractJson 兜底（提交 <code>5cc3483</code>）。
+  </div>
+
+</div>
+
+<div class="result">
+  <b>✅ 验证结果</b>：无 Key 调用返回 401 中文提示 ✓；Mock 与真实 Key 全链路 SSE 转发 ✓；评分 JSON 在 4 份评委输出中 100% 解析成功 ✓<br>
+  <span class="tag">提交 1aad5b1</span><span class="tag">提交 5cc3483（JSON模式兼容修复）</span>
+</div>
+
+</body>
+</html>
